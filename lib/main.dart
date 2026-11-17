@@ -10,7 +10,9 @@ void main() {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => FavoriteProvider()),
-        ChangeNotifierProvider(create: (context) => ThemeProvider()), // Latihan 1
+        ChangeNotifierProvider(
+          create: (context) => ThemeProvider(),
+        ), // Latihan 1
       ],
       child: const ResepKuApp(),
     ),
@@ -28,13 +30,18 @@ class ResepKuApp extends StatelessWidget {
     return MaterialApp(
       title: 'ResepKu',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(colorSchemeSeed: Colors.deepOrange),
+      theme: ThemeData(
+        colorSchemeSeed: Colors.deepOrange,
+        fontFamily: 'Poppins',
+      ),
       darkTheme: ThemeData(
         colorSchemeSeed: Colors.deepOrange,
         brightness: Brightness.dark,
+        fontFamily: 'Poppins',
       ),
       themeMode: themeMode,
-      builder: (context, child) => IdentityFooter(child: child!), // jangan dihapus
+      builder: (context, child) =>
+          IdentityFooter(child: child!), // jangan dihapus
       home: const HomePage(),
     );
   }
