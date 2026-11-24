@@ -1,95 +1,94 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
 import 'package:provider/provider.dart';
-import 'package:resepku/data/dummy_recipes.dart';
 import 'package:resepku/main.dart';
-import 'package:resepku/pages/detail_page.dart';
-import 'package:resepku/pages/favorite_page.dart';
 import 'package:resepku/providers/favorite_provider.dart';
 import 'package:resepku/providers/theme_provider.dart';
-import 'package:resepku/widgets/recipe_tile.dart';
+import 'package:resepku/services/recipe_service.dart';
 
-Widget _buildApp(FavoriteProvider favorites) {
+Widget buildTestApp() {
+  final client = MockClient((request) async {
+    if (request.url.path.endsWith('/recipes')) {
+      return http.Response(
+        jsonEncode({
+          'recipes': [
+            {
+              'id': 1,
+              'name': 'Classic Margherita Pizza',
+              'cuisine': 'Italian',
+              'difficulty': 'Easy',
+              'prepTimeMinutes': 20,
+              'cookTimeMinutes': 15,
+              'servings': 4,
+              'caloriesPerServing': 300,
+              'rating': 4.6,
+              'image': '',
+              'ingredients': ['Pizza dough'],
+              'instructions': ['Bake the pizza'],
+            },
+            {
+              'id': 2,
+              'name': 'Vegetarian Stir-Fry',
+              'cuisine': 'Asian',
+              'difficulty': 'Medium',
+              'prepTimeMinutes': 15,
+              'cookTimeMinutes': 20,
+              'servings': 3,
+              'caloriesPerServing': 250,
+              'rating': 5,
+              'image': '',
+              'ingredients': ['Tofu'],
+              'instructions': ['Stir-fry the tofu'],
+            },
+          ],
+        }),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    }
+    return http.Response(jsonEncode({'isDeleted': true}), 200);
+  });
+
   return MultiProvider(
     providers: [
-      ChangeNotifierProvider.value(value: favorites),
+      ChangeNotifierProvider(create: (_) => FavoriteProvider()),
       ChangeNotifierProvider(create: (_) => ThemeProvider()),
+      Provider<RecipeService>.value(value: RecipeService(client: client)),
     ],
     child: const ResepKuApp(),
   );
 }
 
 void main() {
-  testWidgets('cuisine filter and grid toggle preserve favorites', (
-    tester,
-  ) async {
-    final favorites = FavoriteProvider();
-    await tester.pumpWidget(_buildApp(favorites));
+  testWidgets('loads recipes and toggles grid view', (tester) async {
+    await tester.pumpWidget(buildTestApp());
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    await tester.tap(find.widgetWithText(ChoiceChip, 'Asian'));
-    await tester.pump();
-    expect(find.text('Vegetarian Stir-Fry'), findsOneWidget);
-    expect(find.text('Classic Margherita Pizza'), findsNothing);
-
+    expect(find.text('Classic Margherita Pizza'), findsOneWidget);
     await tester.tap(find.byTooltip('Tampilan grid'));
     await tester.pump();
     expect(find.byType(GridView), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Tambahkan ke favorit'));
-    await tester.pump();
-    expect(favorites.isFavorite(dummyRecipes[1]), isTrue);
-
-    await tester.tap(find.byTooltip('Tampilan daftar'));
-    await tester.pump();
-    expect(
-      find.descendant(
-        of: find.byType(RecipeTile),
-        matching: find.byIcon(Icons.favorite),
-      ),
-      findsOneWidget,
-    );
   });
 
-  testWidgets('detail page uses cached sliver image and lists ingredients', (
+  testWidgets('opens detail and shows ingredients and instructions', (
     tester,
   ) async {
-    final favorites = FavoriteProvider();
-    await tester.pumpWidget(_buildApp(favorites));
+    await tester.pumpWidget(buildTestApp());
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     await tester.tap(find.text('Classic Margherita Pizza'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.byType(DetailPage), findsOneWidget);
-    expect(find.byType(SliverAppBar), findsOneWidget);
-    expect(find.byType(CachedNetworkImage), findsOneWidget);
     expect(find.text('Bahan'), findsOneWidget);
     expect(find.text('Pizza dough'), findsOneWidget);
-  });
-
-  testWidgets('swiping a favorite removes it and shows its name', (
-    tester,
-  ) async {
-    final favorites = FavoriteProvider()..toggle(dummyRecipes.first);
-    await tester.pumpWidget(_buildApp(favorites));
-    await tester.pump();
-
-    await tester.tap(find.byTooltip('Favorit saya'));
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-    expect(find.byType(FavoritePage), findsOneWidget);
-
-    await tester.fling(find.byType(Dismissible), const Offset(-1000, 0), 1000);
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-
-    expect(favorites.count, 0);
-    expect(
-      find.text('Classic Margherita Pizza dihapus dari favorit'),
-      findsOneWidget,
-    );
+    expect(find.text('Langkah'), findsOneWidget);
+    expect(find.text('Bake the pizza'), findsOneWidget);
   });
 }

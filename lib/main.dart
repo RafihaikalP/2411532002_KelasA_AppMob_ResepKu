@@ -4,15 +4,17 @@ import 'package:resepku/pages/home_page.dart';
 import 'package:resepku/providers/favorite_provider.dart';
 import 'package:resepku/providers/theme_provider.dart';
 import 'package:resepku/widgets/identity_footer.dart';
-
+import 'package:resepku/services/recipe_service.dart';
 void main() {
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (context) => FavoriteProvider()),
-        ChangeNotifierProvider(
-          create: (context) => ThemeProvider(),
-        ), // Latihan 1
+        ChangeNotifierProvider(create: (context) => ThemeProvider()),
+        Provider<RecipeService>(
+          create: (_) => RecipeService(),
+          dispose: (_, service) => service.close(),
+        ),
       ],
       child: const ResepKuApp(),
     ),
@@ -24,9 +26,6 @@ class ResepKuApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // watch: MaterialApp harus rebuild ketika tema berubah
-    final themeMode = context.watch<ThemeProvider>().themeMode;
-
     return MaterialApp(
       title: 'ResepKu',
       debugShowCheckedModeBanner: false,
@@ -39,7 +38,7 @@ class ResepKuApp extends StatelessWidget {
         brightness: Brightness.dark,
         fontFamily: 'Poppins',
       ),
-      themeMode: themeMode,
+      themeMode: context.watch<ThemeProvider>().themeMode,
       builder: (context, child) =>
           IdentityFooter(child: child!), // jangan dihapus
       home: const HomePage(),
